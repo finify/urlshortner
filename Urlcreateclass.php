@@ -141,4 +141,53 @@ class ShortUrl
 
         return true;
     }
-...
+public function shortCodeToUrl($code, $increment = true) {
+        if (empty($code)) {
+            throw new Exception("No short code was supplied.");
+        }
+
+        if ($this->validateShortCode($code) == false) {
+            throw new Exception(
+                "Short code does not have a valid format.");
+        }
+
+        $urlRow = $this->getUrlFromDb($code);
+        if (empty($urlRow)) {
+            throw new Exception(
+                "Short code does not appear to exist.");
+        }
+
+        if ($increment == true) {
+            $this->incrementCounter($urlRow["id"]);
+        }
+
+        return $urlRow["long_url"];
+    }
+
+    protected function validateShortCode($code) {
+        return preg_match("|[" . self::$chars . "]+|", $code);
+    }
+
+    protected function getUrlFromDb($code) {
+        $query = "SELECT id, long_url FROM " . self::$table .
+            " WHERE short_code = :short_code LIMIT 1";
+        $stmt = $this->pdo->prepare($query);
+        $params=array(
+            "short_code" => $code
+        );
+        $stmt->execute($params);
+
+        $result = $stmt->fetch();
+        return (empty($result)) ? false : $result;
+    }
+
+    protected function incrementCounter($id) {
+        $query = "UPDATE " . self::$table .
+            " SET counter = counter + 1 WHERE id = :id";
+        $stmt = $this->pdo->prepare($query);
+        $params = array(
+            "id" => $id
+        );
+        $stmt->execute($params);
+    }
+}
